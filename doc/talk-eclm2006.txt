@@ -359,8 +359,8 @@ CODE
 
 (defclass proxy ()
   ((object-id :initarg :object-id :reader object-id)
-   (rucksack :initform (current-rucksack)
-             :initarg :rucksack :reader rucksack))
+   (backpack :initform (current-backpack)
+             :initarg :backpack :reader backpack))
   (:documentation "Proxies are some kind of in-memory forwarding pointer
 to data in the cache.  They are never saved on disk."))
 
@@ -370,9 +370,9 @@ Instead of a class like this, we could also have used plain object ids
 (no-nonsense raw integers) to represent the objects.  This would be
 more efficient, but it has two problems:
 
-1. It would become quite difficult to work with more than one rucksack
+1. It would become quite difficult to work with more than one backpack
    at a time, because you'd need to keep track of which object id
-   belongs to which rucksack in your application code.
+   belongs to which backpack in your application code.
 
 2. You lose 'type information': you can't distinguish an object id
    from a proxy, because they both look like integers from the
@@ -418,7 +418,7 @@ For Rucksack, I've considered three possibilities:
 3. Use a more complicated indexing scheme (btrees, for example).
 
 In fact, I'm *still* considering these possibilities.  At the moment,
-Rucksack uses the second scheme.  Each rucksack directory has a file
+Rucksack uses the second scheme.  Each backpack directory has a file
 called 'heap', which contains serialized versions of all objects, and
 a file called 'objects', which contains a straightforward mapping from
 object IDs to object positions on disk.
@@ -887,7 +887,7 @@ PICTURE
 
 (defmethod transaction-rollback-1 ((transaction standard-transaction)
                                    (cache standard-cache)
-                                   (rucksack standard-rucksack))
+                                   (backpack standard-backpack))
   (clrhash (dirty-objects transaction))
   (queue-clear (dirty-queue transaction))
   (close-transaction cache transaction))

@@ -1,6 +1,6 @@
 ;; $Id: test-index-1a.lisp,v 1.1 2008-01-23 15:49:07 alemmens Exp $
 
-(in-package :rucksack-test)
+(in-package :backpack-test)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Indexing example
@@ -27,9 +27,9 @@
   ;; would contain everything else (especially methods that specialize on one
   ;; of the classes defined in the first one).
 
-  (defparameter *hacker-rucksack* #p"/tmp/rucksack/hackers/")
+  (defparameter *hacker-backpack* #p"/tmp/backpack/hackers/")
 
-  (with-rucksack (rs *hacker-rucksack* :if-exists :supersede)
+  (with-backpack (rs *hacker-backpack* :if-exists :supersede)
     (with-transaction ()
 
       ;; We define some persistent classes with indexed slots.
@@ -60,31 +60,31 @@
             (name hacker))))
 
 (defun create-hackers ()
-  (with-rucksack (rs *hacker-rucksack*)
-    ;; Fill the rucksack with some hackers.
+  (with-backpack (rs *hacker-backpack*)
+    ;; Fill the backpack with some hackers.
     (with-transaction ()
       (loop repeat 20
             do (make-instance 'hacker))
       (loop repeat 10
             do (make-instance 'lisp-hacker))
-      (rucksack-map-class rs 'hacker #'print))))
+      (backpack-map-class rs 'hacker #'print))))
 
 (defun show-hackers ()
-  (with-rucksack (rs *hacker-rucksack*)
+  (with-backpack (rs *hacker-backpack*)
     (with-transaction ()
       (print "Hackers indexed by object id.")
-      (rucksack-map-class rs 'hacker #'print)
+      (backpack-map-class rs 'hacker #'print)
       (print "Hackers indexed by name.")
-      (rucksack-map-slot rs 'hacker 'name #'print)
+      (backpack-map-slot rs 'hacker 'name #'print)
       (print "Hackers indexed by hacker-id.")
-      (rucksack-map-slot rs 'hacker 'id #'print)
+      (backpack-map-slot rs 'hacker 'id #'print)
       (print "Lisp hackers.")
-      (rucksack-map-class rs 'lisp-hacker #'print)
+      (backpack-map-class rs 'lisp-hacker #'print)
       (print "Non-lisp hackers.")
-      (rucksack-map-class rs 'hacker #'print
+      (backpack-map-class rs 'hacker #'print
                           :include-subclasses nil)
       (print "Hacker object ids.")
-      (rucksack-map-class rs 'hacker #'print
+      (backpack-map-class rs 'hacker #'print
                           :id-only t))))
 
 

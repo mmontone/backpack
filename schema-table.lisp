@@ -1,6 +1,6 @@
 ;; $Id: schema-table.lisp,v 1.7 2007-01-20 18:17:55 alemmens Exp $
 
-(in-package :rucksack)          
+(in-package :backpack)          
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema table

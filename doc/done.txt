@@ -6,7 +6,7 @@ Harbo).
 
 * 2008-03-31 - version 0.1.19
 
-Don't use wildcards but delete only the four rucksack files when
+Don't use wildcards but delete only the four backpack files when
 opening an existing Rucksack in :SUPERSEDE mode (bug reported
 by Volkan YAZICI).
 
@@ -240,7 +240,7 @@ Added serializing/deserializing of structures.  Only works on SBCL.
 
 * 2006-08
 
-- Save and load the index tables when closing/opening a rucksack.
+- Save and load the index tables when closing/opening a backpack.
 
 - Implement the :UNIQUE slot option.
 

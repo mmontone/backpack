@@ -1,6 +1,6 @@
 ;; $Id: object-table.lisp,v 1.5 2008-02-03 12:32:16 alemmens Exp $
 
-(in-package :rucksack)
+(in-package :backpack)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Object table

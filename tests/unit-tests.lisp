@@ -1,8 +1,8 @@
-(in-package :rucksack-test)
+(in-package :backpack-test)
 
 ;; You can run all basic unit tests with:
 ;;
-;;   (in-package :rucksack-test)
+;;   (in-package :backpack-test)
 ;;   (run-tests)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -10,26 +10,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; In many of the tests, I use multiple with-transaction forms.  This is to
-;; force the opening and closing of the test rucksack, and hopefully ensure 
+;; force the opening and closing of the test backpack, and hopefully ensure 
 ;; that we are actually persisting data.
 
-(defparameter *rucksack-unit-tests* #p"/tmp/rucksack-unit-tests/")
+(defparameter *backpack-unit-tests* #p"/tmp/backpack-unit-tests/")
 
-(defmacro with-rucksack-and-transaction ((&key (if-exists :overwrite))
+(defmacro with-backpack-and-transaction ((&key (if-exists :overwrite))
                                          &body body)
-  `(with-rucksack (rs *rucksack-unit-tests* :if-exists ,if-exists)
+  `(with-backpack (rs *backpack-unit-tests* :if-exists ,if-exists)
      (with-transaction ()
        ,@body)))
 
 (define-test serialization-basics
   ;; Test basic serialization of Rucksack
-  (let ((store (merge-pathnames *rucksack-unit-tests* "store")))
-    (rucksack::save-objects (list store) store)
-    (assert-equal (list store) (rucksack::load-objects store))))
+  (let ((store (merge-pathnames *backpack-unit-tests* "store")))
+    (backpack::save-objects (list store) store)
+    (assert-equal (list store) (backpack::load-objects store))))
 
 (define-test basic-p-cons
   ;; Basic functions of Rucksack's P-CONS.
-  (with-rucksack-and-transaction ()
+  (with-backpack-and-transaction ()
     (let ((pc (p-cons 1 2)))
       (assert-true (and (= 1 (p-car pc)) 
                         (= 2 (p-cdr pc))))
@@ -41,7 +41,7 @@
 
 (define-test basic-p-array
   ;; Basic functions of Rucksack's P-ARRAY.
-  (with-rucksack-and-transaction ()
+  (with-backpack-and-transaction ()
     (let ((array (p-make-array 10)))
       (assert-true (not (null array)))
       (assert-equal (list 10) (p-array-dimensions array))
@@ -56,7 +56,7 @@
 
 (define-test basic-p-list
   ;; Basic persistent list functions.
-  (with-rucksack-and-transaction ()
+  (with-backpack-and-transaction ()
     (flet ((unwrap (l) (unwrap-persistent-list l)))
       (let ((plist (p-list 0 1 2 3 4 5 6 7 8 9))
 	    (rlist   (list 0 1 2 3 4 5 6 7 8 9)))
@@ -93,17 +93,17 @@
   (:metaclass persistent-class))
 
 (define-test basic-persistence 
-  "Tests basic objects existing over an open/close of a rucksack"
-  (with-rucksack-and-transaction (:if-exists :supersede)
-    (add-rucksack-root (p-cons 1 2) rs)
-    (add-rucksack-root (p-make-array 3 :initial-contents '(1 2 3)) rs)
-    (add-rucksack-root (make-instance 'basic-persist 
+  "Tests basic objects existing over an open/close of a backpack"
+  (with-backpack-and-transaction (:if-exists :supersede)
+    (add-backpack-root (p-cons 1 2) rs)
+    (add-backpack-root (p-make-array 3 :initial-contents '(1 2 3)) rs)
+    (add-backpack-root (make-instance 'basic-persist 
                                       :data "foo"
                                       :cached t)
                        rs))
-  ;; Reopen the rucksack.
-  (with-rucksack-and-transaction ()
-    (let ((roots (rucksack-roots rs)))
+  ;; Reopen the backpack.
+  (with-backpack-and-transaction ()
+    (let ((roots (backpack-roots rs)))
       (assert-equal 3 (length roots))
       (dolist (r roots)
 	(typecase r
@@ -125,24 +125,24 @@
   (mapcar (lambda (d) (make-instance class-type :data d))
           data))
 
-(defun find-indexed (rucksack class data)
+(defun find-indexed (backpack class data)
   (let (result)
-    (rucksack-map-slot rucksack class 'data
+    (backpack-map-slot backpack class 'data
 		       (lambda (obj) (setf result obj))
 		       :equal data)
     result))
 
-(defun delete-object (rucksack class data)
-  (rucksack::rucksack-delete-object rucksack (find-indexed rucksack class data)))
+(defun delete-object (backpack class data)
+  (backpack::backpack-delete-object backpack (find-indexed backpack class data)))
 
-(defun ensure-exists (rucksack class data)
+(defun ensure-exists (backpack class data)
   (every (lambda (d)
-	   (find-indexed rucksack class d))
+	   (find-indexed backpack class d))
 	 data))
 
-(defun count-instances (rucksack class)
+(defun count-instances (backpack class)
   (let ((count 0))
-    (rucksack-map-class rucksack class
+    (backpack-map-class backpack class
 			(lambda (obj)
 			  (declare (ignore obj))
 			  (incf count)))
@@ -170,11 +170,11 @@
 
 
 (define-test indexed-persistence
-  ;; Open a clean rucksack.
-  (with-rucksack-and-transaction (:if-exists :supersede)
+  ;; Open a clean backpack.
+  (with-backpack-and-transaction (:if-exists :supersede)
     (make-indexed-test-instances))
-  ;; Close the rucksack, reopen below.
-  (with-rucksack-and-transaction ()
+  ;; Close the backpack, reopen below.
+  (with-backpack-and-transaction ()
     (assert-true (ensure-exists rs 'number-index '(1 2 3 4)))
     (assert-false (ensure-exists rs 'number-index '(5)))
     
@@ -196,21 +196,21 @@
 
 
 (define-test basic-deletion
-  (with-rucksack-and-transaction (:if-exists :supersede)
+  (with-backpack-and-transaction (:if-exists :supersede)
     (dotimes (x 4)
-      (add-rucksack-root (p-cons x x) rs)))
-  (with-rucksack-and-transaction ()
-    (let ((roots (rucksack-roots rs)))
+      (add-backpack-root (p-cons x x) rs)))
+  (with-backpack-and-transaction ()
+    (let ((roots (backpack-roots rs)))
       (assert-equal 4 (length roots))
-      (assert-true (rucksack::rucksack-root-p (car roots) rs))
-      (rucksack::delete-rucksack-root (car roots) rs)))
-  (with-rucksack-and-transaction ()
-    (assert-equal 3 (length (rucksack-roots rs)))))
+      (assert-true (backpack::backpack-root-p (car roots) rs))
+      (backpack::delete-backpack-root (car roots) rs)))
+  (with-backpack-and-transaction ()
+    (assert-equal 3 (length (backpack-roots rs)))))
 
 (define-test indexed-deletion
-  (with-rucksack-and-transaction (:if-exists :supersede)
+  (with-backpack-and-transaction (:if-exists :supersede)
     (make-indexed-test-instances))
-  (with-rucksack-and-transaction ()
+  (with-backpack-and-transaction ()
     (assert-true (find-indexed rs 'number-index 1))
     (delete-object rs 'number-index 1)
     (assert-false (find-indexed rs 'number-index 1))
@@ -234,28 +234,28 @@
 
 
 (define-test basic-rollback
-  (with-rucksack-and-transaction (:if-exists :supersede)
-    (add-rucksack-root (p-cons 1 2) rs))
-  (with-rucksack-and-transaction ()
-    (let ((pc (first (rucksack-roots rs))))
+  (with-backpack-and-transaction (:if-exists :supersede)
+    (add-backpack-root (p-cons 1 2) rs))
+  (with-backpack-and-transaction ()
+    (let ((pc (first (backpack-roots rs))))
       (setf (p-car pc) 4)
       ;; Abort the transaction.  WITH-TRANSACTION will take care of
       ;; calling TRANSACTION-ROLLBACK.
       (abort)))
-  (with-rucksack-and-transaction ()
-    (let ((pc (car (rucksack-roots rs))))
+  (with-backpack-and-transaction ()
+    (let ((pc (car (backpack-roots rs))))
       (assert-equal 1 (p-car pc))))
   ;; Test that transactions are also rolled back when we throw an
   ;; error inside the body of a WITH-TRANSACTION form.
   (assert-error 'error
-                (with-rucksack-and-transaction ()
-                  (let ((pc (first (rucksack-roots rs))))
+                (with-backpack-and-transaction ()
+                  (let ((pc (first (backpack-roots rs))))
                     (setf (p-car pc) 5)
                     ;; Abort the transaction by causing an error.
                     (error "Something went wrong"))))
-  (with-rucksack-and-transaction ()
+  (with-backpack-and-transaction ()
     ;; Verify that the error caused a transaction rollback.
-    (let ((pc (car (rucksack-roots rs))))
+    (let ((pc (car (backpack-roots rs))))
       (assert-equal 1 (p-car pc)))))
 
 

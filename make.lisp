@@ -4,7 +4,7 @@
 (in-package :cl-user)
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
-  (defparameter *rucksack-directory* *load-pathname*))
+  (defparameter *backpack-directory* *load-pathname*))
 
 (defun make (&key (debug t))
   (when debug
@@ -23,14 +23,14 @@
                         "objects"
                         "p-btrees"
                         "index"
-                        "rucksack"
+                        "backpack"
                         "transactions"
                         "test")
           do (tagbody
               :retry
               (let ((lisp (make-pathname :name file
                                          :type "lisp"
-                                         :defaults *rucksack-directory*)))
+                                         :defaults *backpack-directory*)))
                 (multiple-value-bind (fasl warnings failure)
                     (compile-file lisp)
                   (declare (ignore warnings))

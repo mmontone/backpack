@@ -1,6 +1,6 @@
 ;; $Id: test-schema-update-1c.lisp,v 1.1 2008-01-23 15:49:07 alemmens Exp $
 
-(in-package :rucksack-test-schema-update)
+(in-package :backpack-test-schema-update)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema updates and UPDATE-INSTANCE-FOR-REDEFINED-CLASS, part 3 of 3
@@ -15,7 +15,7 @@
 ;;
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (with-rucksack (rs *dir*)
+  (with-backpack (rs *dir*)
     (with-transaction ()
       
       (defclass person ()
@@ -75,14 +75,14 @@
 
 (defun test-3 ()
   ;; Create some persons with the second version of the class definition.
-  (with-rucksack (rs *dir*)
+  (with-backpack (rs *dir*)
     (with-transaction ()
       (loop repeat 10
             do (make-instance 'person))))
   ;; Show all persons (for three versions of the class definition).
-  (with-rucksack (rs *dir*)
+  (with-backpack (rs *dir*)
     (with-transaction ()
-      (rucksack-map-class rs 'person #'print))))
+      (backpack-map-class rs 'person #'print))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Sample output

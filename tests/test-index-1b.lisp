@@ -23,7 +23,7 @@
 ;;;   (3) the index has been filled with the new values for the age slot.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(with-rucksack (rs *hacker-rucksack*)
+(with-backpack (rs *hacker-backpack*)
   (with-transaction ()
 
     ;; For classes that may change during program development, you should
@@ -46,10 +46,10 @@
       (:index t))))
 
 (defun show-hackers-by-age ()
-  (with-rucksack (rs *hacker-rucksack*)
+  (with-backpack (rs *hacker-backpack*)
     (with-transaction ()
       (print "Hackers by age.")
-      (rucksack-map-slot rs 'hacker 'age
+      (backpack-map-slot rs 'hacker 'age
                          (lambda (hacker)
                            (format t "~&~A has age ~D.~%"
                                    (name hacker)

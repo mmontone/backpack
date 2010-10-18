@@ -1,6 +1,6 @@
 ;; $Id: transactions.lisp,v 1.15 2009-05-27 14:26:25 alemmens Exp $
 
-(in-package :rucksack)
+(in-package :backpack)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Transactions
@@ -18,13 +18,13 @@
 ;;;  transaction-start-1
 ;;;  
 
-(defgeneric transaction-start-1 (cache rucksack &key &allow-other-keys)
+(defgeneric transaction-start-1 (cache backpack &key &allow-other-keys)
   (:documentation "Creates and returns a new transaction."))
 
-(defgeneric transaction-commit-1 (transaction cache rucksack)
+(defgeneric transaction-commit-1 (transaction cache backpack)
   (:documentation "Save all modified objects to disk."))
 
-(defgeneric transaction-rollback-1 (transaction cache rucksack))
+(defgeneric transaction-rollback-1 (transaction cache backpack))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Transactions
@@ -124,16 +124,16 @@ returns nil."))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun transaction-start (&rest args
-                          &key (rucksack (current-rucksack))
+                          &key (backpack (current-backpack))
                           &allow-other-keys)
-  (apply #'transaction-start-1 (rucksack-cache rucksack) rucksack args))
+  (apply #'transaction-start-1 (backpack-cache backpack) backpack args))
 
 
 (defmethod transaction-start-1 ((cache standard-cache)
-                                (rucksack standard-rucksack)
+                                (backpack standard-backpack)
                                 &key &allow-other-keys)
   ;; Create new transaction.
-  (let* ((id (incf (highest-transaction-id rucksack)))
+  (let* ((id (incf (highest-transaction-id backpack)))
          (transaction (make-instance 'standard-transaction :id id)))
     ;; Add to open transactions.
     (open-transaction cache transaction)
@@ -144,47 +144,47 @@ returns nil."))
 ;;; Rucksacks with serial transactions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defclass serial-transaction-rucksack (standard-rucksack)
+(defclass serial-transaction-backpack (standard-backpack)
   ((transaction-lock :initform (make-lock :name "Rucksack transaction lock")
-                     :reader rucksack-transaction-lock))
+                     :reader backpack-transaction-lock))
   (:documentation
-   "A serial transaction rucksack allows only one active transaction
+   "A serial transaction backpack allows only one active transaction
 at a time."))
 
 (defmethod transaction-start-1 :before ((cache standard-cache)
-                                        (rucksack serial-transaction-rucksack)
+                                        (backpack serial-transaction-backpack)
                                         &key &allow-other-keys)
-  (process-lock (rucksack-transaction-lock rucksack)))
+  (process-lock (backpack-transaction-lock backpack)))
 
 (defmethod transaction-commit-1 :after ((transaction standard-transaction)
                                         (cache standard-cache)
-                                        (rucksack serial-transaction-rucksack))
-  (process-unlock (rucksack-transaction-lock rucksack)))
+                                        (backpack serial-transaction-backpack))
+  (process-unlock (backpack-transaction-lock backpack)))
 
 (defmethod transaction-rollback-1 :after ((transaction standard-transaction)
                                           (cache standard-cache)
-                                          (rucksack serial-transaction-rucksack))
-  (process-unlock (rucksack-transaction-lock rucksack)))
+                                          (backpack serial-transaction-backpack))
+  (process-unlock (backpack-transaction-lock backpack)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Committing a transaction
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; use without-rucksack-gcing to locally set
-;;; *collect-garbage-on-commit* to nil in order to supress rucksack
+;;; use without-backpack-gcing to locally set
+;;; *collect-garbage-on-commit* to nil in order to supress backpack
 ;;; garbage collection on commit
-(defmacro without-rucksack-gcing (&body body)
+(defmacro without-backpack-gcing (&body body)
   `(let ((*collect-garbage-on-commit* nil))
      ,@body))
 
-(defun transaction-commit (transaction &key (rucksack (current-rucksack)))
+(defun transaction-commit (transaction &key (backpack (current-backpack)))
   "Call transaction-commit-1 to do the real work."
-  (transaction-commit-1 transaction (rucksack-cache rucksack) rucksack))
+  (transaction-commit-1 transaction (backpack-cache backpack) backpack))
 
 (defmethod transaction-commit-1 ((transaction standard-transaction)
                                  (cache standard-cache)
-                                 (rucksack standard-rucksack))
+                                 (backpack standard-backpack))
   ;; Save all dirty objects to disk.
   (if (zerop (transaction-nr-dirty-objects transaction))
       (close-transaction cache transaction)
@@ -211,7 +211,7 @@ at a time."))
           (setq nr-allocated-octets (nr-allocated-octets heap)))
         ;; Check for consistency between hash table and queue.
         (unless (zerop (hash-table-count table))
-          (internal-rucksack-error
+          (internal-backpack-error
            "Mismatch between dirty hash-table and queue while committing ~S:
 ~D objects left in hash-table."
            transaction
@@ -228,17 +228,17 @@ at a time."))
                                 (gc-work-for-size heap nr-allocated-octets)))
         ;; 6. Make sure that all changes are actually on disk before
         ;; we continue.
-        (finish-all-output rucksack)))))
+        (finish-all-output backpack)))))
 
-(defmethod finish-all-output ((rucksack standard-rucksack))
-  (let ((cache (rucksack-cache rucksack)))
+(defmethod finish-all-output ((backpack standard-backpack))
+  (let ((cache (backpack-cache backpack)))
     (finish-heap-output (heap cache))
     (finish-heap-output (object-table (heap cache)))
     ;; NOTE: I'm not totally sure that saving the schema table for
     ;; each transaction commit is necessary, but it probably is.  So
     ;; let's play safe for now.  We definitely need to save the roots,
     ;; because the highest transaction-id is part of the roots file.
-    (save-roots rucksack)
+    (save-roots backpack)
     (save-schema-table-if-necessary (schema-table cache))))
 
                                         
@@ -359,14 +359,14 @@ OLD-BLOCK."
 ;;; Rolling back
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun transaction-rollback (transaction &key (rucksack (current-rucksack)))
+(defun transaction-rollback (transaction &key (backpack (current-backpack)))
   (transaction-rollback-1 transaction
-                          (rucksack-cache rucksack)
-                          rucksack))
+                          (backpack-cache backpack)
+                          backpack))
 
 (defmethod transaction-rollback-1 ((transaction standard-transaction)
                                    (cache standard-cache)
-                                   (rucksack standard-rucksack))
+                                   (backpack standard-backpack))
   (clrhash (dirty-objects transaction))
   (queue-clear (dirty-queue transaction))
   (close-transaction cache transaction))

@@ -1,6 +1,6 @@
 ;; $Id: cache.lisp,v 1.16 2009-05-27 14:26:25 alemmens Exp $
 
-(in-package :rucksack)
+(in-package :backpack)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Cache: API
@@ -82,8 +82,8 @@ cache."))
   ;; keep track of different class versions for objects in the heap.
   ((heap :initarg :heap :reader heap)
    (schema-table :initarg :schema-table :reader schema-table)
-   (rucksack :initarg :rucksack :reader rucksack
-             :documentation "Back pointer to the rucksack.")
+   (backpack :initarg :backpack :reader backpack
+             :documentation "Back pointer to the backpack.")
    ;; Clean objects
    (objects :initarg :objects
             :reader objects
@@ -200,7 +200,7 @@ very stupid about the objects it should try to keep in memory."))
                             :class heap-class
                             :if-exists if-exists
                             :if-does-not-exist if-does-not-exist
-                            :rucksack (rucksack cache)
+                            :backpack (backpack cache)
                             :options (list* :object-table object-table
                                             heap-options))
             schema-table (open-schema-table (merge-pathnames "schemas" directory)
@@ -261,7 +261,7 @@ already dirty, nothing happens."
     (let ((old-transaction
            (find-conflicting-transaction object-id cache transaction)))
       (when old-transaction
-        (rucksack-error 'transaction-conflict
+        (backpack-error 'transaction-conflict
                         :object-id object-id
                         :new-transaction transaction
                         :old-transaction old-transaction)))

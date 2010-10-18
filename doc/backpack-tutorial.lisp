@@ -3,7 +3,7 @@ Rucksack Tutorial by Brad Beveridge (brad.beveridge@gmail.com)
 
 What is Rucksack?  Hopefully you already know this, but the quick
 description is that Rucksack is a persistence library for Common Lisp.
-Its project page is at http://common-lisp.net/project/rucksack/, and
+Its project page is at http://common-lisp.net/project/backpack/, and
 the author of the library is Arthur Lemmens.
 
 Rucksack provides a fairly transparent persistence mechanism for
@@ -28,10 +28,10 @@ Let's get started by defining a package that uses Rucksack, and
 declaring that we are defining our code within it.
 |#
 
-(defpackage :rucksack-tutorial
+(defpackage :backpack-tutorial
  (:nicknames :rs-tute)
- (:use :cl :rucksack))
-(in-package :rucksack-tutorial)
+ (:use :cl :backpack))
+(in-package :backpack-tutorial)
 
 #| 
 RS will need to be given a path where it can create its files.  The
@@ -71,7 +71,7 @@ that tracks every instance of CONTACT-DETAILS.  Since we are indexing
 by other slots we don't really need this index, but it is fine for
 this example.
 
-We're going to open the rucksack storage in :SUPERSEDE mode for this
+We're going to open the backpack storage in :SUPERSEDE mode for this
 first evaluation so that we always start with a fresh database.
 
 * NOTE *
@@ -80,7 +80,7 @@ inside an open RS and transaction.  It is during class definition that
 the initial indexes are created.
 |#
 
-(with-rucksack (rs *rs-tute-directory* :if-exists :supersede)
+(with-backpack (rs *rs-tute-directory* :if-exists :supersede)
   (with-transaction ()
     (defclass contact-details ()
       ((unique-id    :initarg :unique-id :accessor unique-id-of 
@@ -141,7 +141,7 @@ and close the store.
 |#
 
 (defun make-contact (name &optional phone-number email address notes)
-  (with-rucksack (rs *rs-tute-directory*)
+  (with-backpack (rs *rs-tute-directory*)
     (with-transaction ()
 	(make-instance 'contact-details 
 		       :name (or name "")
@@ -190,9 +190,9 @@ objects that Rucksack is aware of.
 |#
 
 (defun print-all-contacts ()
-  (with-rucksack (rs *rs-tute-directory*)
+  (with-backpack (rs *rs-tute-directory*)
     (with-transaction ()
-      (rucksack-map-class rs 'contact-details 
+      (backpack-map-class rs 'contact-details 
 			  (lambda (object)
 			    (format t "~A~%" object))))))
 
@@ -209,9 +209,9 @@ Let's write a function that finds a contact by matching their name.
 |#
 
 (defun find-contact-by-name (name)
-  (with-rucksack (rs *rs-tute-directory*)
+  (with-backpack (rs *rs-tute-directory*)
     (with-transaction ()
-      (rucksack-map-slot rs 'contact-details 'name 
+      (backpack-map-slot rs 'contact-details 'name 
 			 (lambda (contact)
 			   (return-from find-contact-by-name contact))
 			 :equal name)))
@@ -235,9 +235,9 @@ instances in their sorted order.
 
 (defun find-contacts-by-name-range (&optional start end)
   (let (ret)
-    (with-rucksack (rs *rs-tute-directory*)
+    (with-backpack (rs *rs-tute-directory*)
       (with-transaction ()
-	(rucksack-map-slot rs 'contact-details 'name 
+	(backpack-map-slot rs 'contact-details 'name 
 			   (lambda (contact)
 			     (push contact ret))
 			   :min start :max end :include-min t :include-max t)))
@@ -254,11 +254,11 @@ Let's write a little function to delete an object if we have its name.
 |#
 
 (defun delete-object-by-name (name)
-  (with-rucksack (rs *rs-tute-directory*)
+  (with-backpack (rs *rs-tute-directory*)
     (with-transaction ()
       (let ((contact (find-contact-by-name name)))
 	(when contact
-	  (rucksack::rucksack-delete-object rs contact))))))
+	  (backpack::backpack-delete-object rs contact))))))
 
 #| 
 (delete-object-by-name "Zane") 

@@ -1,6 +1,6 @@
 ;; $Id: heap.lisp,v 1.16 2008-01-22 17:02:07 alemmens Exp $
 
-(in-package :rucksack)
+(in-package :backpack)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Heaps: API
@@ -75,7 +75,7 @@ was called.")))
 ;;
 
 (defun open-heap (pathname
-                  &key (class 'heap) rucksack (options '())
+                  &key (class 'heap) backpack (options '())
                   (if-exists :overwrite) (if-does-not-exist :create))
   (let ((stream (open pathname
                       :element-type '(unsigned-byte 8)
@@ -86,7 +86,7 @@ was called.")))
     (apply #'make-instance
            class
            :stream stream
-           :rucksack rucksack
+           :backpack backpack
            options)))
 
 

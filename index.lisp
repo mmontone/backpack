@@ -1,6 +1,6 @@
 ;; $Id: index.lisp,v 1.12 2008-02-19 22:44:05 alemmens Exp $
 
-(in-package :rucksack)
+(in-package :backpack)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Indexing: API

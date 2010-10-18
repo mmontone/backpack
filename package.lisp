@@ -3,7 +3,7 @@
 #-(or allegro lispworks sbcl openmcl)
   (error "Unsupported implementation: ~A" (lisp-implementation-type))
 
-(defpackage :rucksack
+(defpackage :backpack
   (:nicknames :rs)
 
    (:use :queue :cl
@@ -48,28 +48,28 @@
    #:heap-stream #:heap-end
 
    ;; Rucksacks
-   #:*rucksack*
-   #:open-rucksack #:close-rucksack #:with-rucksack #:current-rucksack
-   #:rucksack #:standard-rucksack
-   #:rucksack-cache
-   #:rucksack-directory
-   #:rucksack-commit #:rucksack-rollback
-   #:add-rucksack-root #:map-rucksack-roots #:rucksack-roots
+   #:*backpack*
+   #:open-backpack #:close-backpack #:with-backpack #:current-backpack
+   #:backpack #:standard-backpack
+   #:backpack-cache
+   #:backpack-directory
+   #:backpack-commit #:backpack-rollback
+   #:add-backpack-root #:map-backpack-roots #:backpack-roots
    #:commit #:rollback
 
    ;; Class and slot indexing
    #:add-class-index #:add-slot-index
    #:remove-class-index #:remove-slot-index
    #:map-class-indexes #:map-slot-indexes
-   #:rucksack-add-class-index #:rucksack-add-slot-index
-   #:rucksack-make-class-index
-   #:rucksack-remove-class-index #:rucksack-remove-slot-index
-   #:rucksack-class-index #:rucksack-slot-index
-   #:rucksack-map-class-indexes #:rucksack-map-slot-indexes
-   #:rucksack-maybe-index-changed-slot #:rucksack-maybe-index-new-object
-   #:rucksack-map-class #:rucksack-map-slot
-   #:rucksack-do-class #:rucksack-do-slot
-   #:rucksack-delete-object
+   #:backpack-add-class-index #:backpack-add-slot-index
+   #:backpack-make-class-index
+   #:backpack-remove-class-index #:backpack-remove-slot-index
+   #:backpack-class-index #:backpack-slot-index
+   #:backpack-map-class-indexes #:backpack-map-slot-indexes
+   #:backpack-maybe-index-changed-slot #:backpack-maybe-index-new-object
+   #:backpack-map-class #:backpack-map-slot
+   #:backpack-do-class #:backpack-do-slot
+   #:backpack-delete-object
 
    ;; Transactions
    #:current-transaction
@@ -81,8 +81,8 @@
    #:transaction-id
 
    ;; Conditions
-   #:rucksack-error #:simple-rucksack-error #:transaction-conflict
-   #:internal-rucksack-error
+   #:backpack-error #:simple-backpack-error #:transaction-conflict
+   #:internal-backpack-error
    #:duplicate-slot-value #:slot-error 
 
    ;; Indexes

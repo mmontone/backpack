@@ -1,6 +1,6 @@
 ;; $Id: p-btrees.lisp,v 1.19 2008-02-19 22:44:06 alemmens Exp $
 
-(in-package :rucksack)
+(in-package :backpack)
 
 ;; DO: We probably need a lock per btree.  Each btree operation should
 ;; be wrapped in a WITH-LOCK to make sure that nobody else changes the btree

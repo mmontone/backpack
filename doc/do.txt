@@ -5,7 +5,7 @@ DO:
 - Make sure that the GC gets rid of all obsolete object versions.
 
 - Add export/import to s-expression format.  This is necessary
-  for migrating existing rucksacks to a new version of Rucksack.
+  for migrating existing backpacks to a new version of Rucksack.
 
 - Give each transaction its own commit file (the name can be generated
   from the transaction id).  That's one step towards avoiding locks

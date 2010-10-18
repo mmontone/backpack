@@ -1,12 +1,12 @@
 ;; $Id: objects.lisp,v 1.22 2008-02-19 22:44:06 alemmens Exp $
 
-(in-package :rucksack)
+(in-package :backpack)
 
-(defvar *rucksack* nil
-  "The current rucksack (NIL if there is no open rucksack).")
+(defvar *backpack* nil
+  "The current backpack (NIL if there is no open backpack).")
 
-(defun current-rucksack ()
-  *rucksack*)
+(defun current-backpack ()
+  *backpack*)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Persistent objects API
@@ -59,7 +59,7 @@ p-position
 
 (defclass proxy ()
   ((object-id :initarg :object-id :reader object-id)
-   (rucksack :initform (current-rucksack) :initarg :rucksack :reader rucksack))
+   (backpack :initform (current-backpack) :initarg :backpack :reader backpack))
   (:documentation "Proxies are some kind of in-memory forwarding pointer
 to data in the cache.  They are never saved on disk."))
 
@@ -75,9 +75,9 @@ to data in the cache.  They are never saved on disk."))
   object)
 
 (defun cache (object)
-  (and (slot-boundp object 'rucksack)
-       (rucksack object)
-       (rucksack-cache (rucksack object))))
+  (and (slot-boundp object 'backpack)
+       (backpack object)
+       (backpack-cache (backpack object))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Low level persistent data structures.
@@ -86,7 +86,7 @@ to data in the cache.  They are never saved on disk."))
 (defclass persistent-data ()
   ((object-id :initarg :object-id :reader object-id)
    (transaction-id :reader transaction-id)
-   (rucksack :initarg :rucksack :initform (current-rucksack) :reader rucksack)
+   (backpack :initarg :backpack :initform (current-backpack) :reader backpack)
    (contents :initarg :contents :accessor contents))
   (:documentation
  "PERSISTENT-DATA classes do not have PERSISTENT-CLASS as metaclass
@@ -124,11 +124,11 @@ functions like P-CAR instead."))
   value)
 
 (defun make-persistent-data (class contents
-                                   &optional (rucksack (current-rucksack)))
+                                   &optional (backpack (current-backpack)))
   (let ((object (make-instance class
                                :contents contents
-                               :rucksack rucksack))
-        (cache (and rucksack (rucksack-cache rucksack))))
+                               :backpack backpack))
+        (cache (and backpack (backpack-cache backpack))))
     (when cache
       (let ((object-id (cache-create-object object cache)))
         ;; Q: What about the transaction-id slot?
@@ -495,9 +495,9 @@ modified persistent list. ITEM is evaluated before place."
   ((object-id :initarg :object-id :reader object-id
               :persistence nil :index nil)
    (transaction-id :reader transaction-id :persistence nil :index nil)
-   (rucksack :initarg :rucksack :reader rucksack :persistence nil :index nil))
+   (backpack :initarg :backpack :reader backpack :persistence nil :index nil))
   (:default-initargs
-   :rucksack *rucksack*)
+   :backpack *backpack*)
   (:metaclass persistent-class)
   (:index nil)
   (:documentation "Classes of metaclass PERSISTENT-CLASS automatically
@@ -508,12 +508,12 @@ inherit from this class."))
   ;; A hack to paper over some MOP differences.  Maybe a cleaner way
   ;; to solve this would be to write our own method for SHARED-INITIALIZE,
   ;; as suggested by Pascal Costanza.
-  ;; See emails of 2006-09-03/04 on rucksack-devel@common-lisp.net.
+  ;; See emails of 2006-09-03/04 on backpack-devel@common-lisp.net.
   nil)
 
 (defmethod initialize-instance :around ((object persistent-object)
                                         &rest args
-                                        &key rucksack
+                                        &key backpack
                                         ;; The DONT-INDEX argument is used
                                         ;; when creating the indexes themselves
                                         ;; (to prevent infinite recursion).
@@ -522,15 +522,15 @@ inherit from this class."))
   (maybe-update-slot-info (class-of object))
   ;; This happens when persistent-objects are created in memory, not when
   ;; they're loaded from the cache (loading uses ALLOCATE-INSTANCE instead).
-  (let ((rucksack (or rucksack (rucksack object))))
+  (let ((backpack (or backpack (backpack object))))
     (unless (slot-boundp object 'object-id)
       (setf (slot-value object 'object-id)
-	    (cache-create-object object (rucksack-cache rucksack))))
+	    (cache-create-object object (backpack-cache backpack))))
     ;; DO: Explain why we don't set the transaction-id slot here.
-    (unless (slot-boundp object 'rucksack)
-      (setf (slot-value object 'rucksack) rucksack))
+    (unless (slot-boundp object 'backpack)
+      (setf (slot-value object 'backpack) backpack))
     (unless dont-index
-      (rucksack-maybe-index-new-object rucksack (class-of object) object)))
+      (backpack-maybe-index-new-object backpack (class-of object) object)))
   ;;
   (let (;; Tell (SETF SLOT-VALUE-USING-CLASS), which may be called
         ;; by SHARED-INITIALIZE in some implementations, that we're
@@ -545,7 +545,7 @@ inherit from this class."))
             (let ((slot-name (slot-definition-name slot)))
               (when (and (slot-boundp object slot-name)
                          (slot-persistence slot))
-                (rucksack-maybe-index-changed-slot (or rucksack (rucksack object))
+                (backpack-maybe-index-changed-slot (or backpack (backpack object))
                                                    class object slot
                                                    nil (slot-value object slot-name)
                                                    nil t))))))
@@ -599,7 +599,7 @@ inherit from this class."))
              ;; If the RUCKSACK slot isn't bound yet, the object is
              ;; just being loaded from disk and we don't need to
              ;; do anything special.
-             (slot-boundp object 'rucksack))
+             (slot-boundp object 'backpack))
         (let* ((old-boundp (slot-boundp-using-class class object slot-name-or-def))
                (old-value
                 (and old-boundp
@@ -608,7 +608,7 @@ inherit from this class."))
           (cache-touch-object object (cache object))
           ;; Update indexes.
           (unless *initializing-instance*
-            (rucksack-maybe-index-changed-slot (rucksack object)
+            (backpack-maybe-index-changed-slot (backpack object)
                                                class object slot
                                                old-value new-value
                                                old-boundp t))
@@ -627,14 +627,14 @@ inherit from this class."))
              ;; If the RUCKSACK slot isn't bound yet, the object is
              ;; just being loaded from disk and we don't need to
              ;; do anything special.
-             (slot-boundp object 'rucksack))
+             (slot-boundp object 'backpack))
         (let* ((old-boundp (slot-boundp-using-class class object slot-name-or-def))
                (old-value
                 (and old-boundp
                      (slot-value-using-class class object slot-name-or-def)))
                (result (call-next-method)))
           (cache-touch-object object (cache object))
-          (rucksack-maybe-index-changed-slot (rucksack object)
+          (backpack-maybe-index-changed-slot (backpack object)
                                              class object slot
                                              old-value nil
                                              old-boundp nil)
@@ -706,7 +706,7 @@ inherit from this class."))
     ;; DO: Handle previous versions if necessary.
     (declare (ignore schema-id transaction-id previous-pointer)) ; later
     (unless (= id object-id)
-      (internal-rucksack-error
+      (internal-backpack-error
        "Object-id mismatch during GC scan (required: ~D; actual: ~D)."
        object-id id))
     (loop repeat nr-slots
@@ -785,7 +785,7 @@ block containing the object."
            (schema (find-schema-for-id table schema-id))
            (object (allocate-instance (find-class (schema-class-name schema)))))
       (unless (= nr-slots (nr-persistent-slots schema))
-        (internal-rucksack-error
+        (internal-backpack-error
          "Schema inconsistency (expected ~D slots, got ~D slots)."
          (nr-persistent-slots schema)
          nr-slots))
@@ -801,7 +801,7 @@ block containing the object."
         ;; DO: We should probably initialize the transient slots to their
         ;; initforms here.
         ;; NOTE: The MOP doesn't intercept the (setf slot-value) here,
-        ;; because the rucksack and object-id slots are still unbound.
+        ;; because the backpack and object-id slots are still unbound.
         (loop for slot-name in (persistent-slot-names schema)
               do (let ((marker (read-next-marker buffer))
                        (old-slot-p (member slot-name discarded-slots)))
@@ -818,7 +818,7 @@ block containing the object."
         ;; Set CACHE, OBJECT-ID and TRANSACTION-ID slots if it's a persistent
         ;; object.
         (when (typep object '(or persistent-object persistent-data))
-          (setf (slot-value object 'rucksack) (current-rucksack)
+          (setf (slot-value object 'backpack) (current-backpack)
                 (slot-value object 'object-id) object-id
                 (slot-value object 'transaction-id) (transaction-id transaction)))
         ;; Call UPDATE-PERSISTENT-INSTANCE-FOR-REDEFINED-CLASS if necessary.
@@ -852,7 +852,7 @@ of the object version list)."
                 (return (values buffer id nr-slots schema-id most-recent-p)))
                ((null prev-version)
                 ;; Oh oh.
-                (internal-rucksack-error "Can't find compatible object
+                (internal-backpack-error "Can't find compatible object
 version for object #~D and transaction ~D."
                                          object-id current-transaction-id))
                (t
@@ -870,7 +870,7 @@ version for object #~D and transaction ~D."
         (nr-slots (deserialize buffer))
         (schema-id (deserialize buffer)))
     (unless (= id object-id)
-      (internal-rucksack-error "Object-id mismatch (required: ~D; actual: ~D)."
+      (internal-backpack-error "Object-id mismatch (required: ~D; actual: ~D)."
                                object-id id))
     (values id nr-slots schema-id transaction-id prev-version)))
 
@@ -915,7 +915,7 @@ version for object #~D and transaction ~D."
   ;; This method exists for updating in-memory persistent objects
   ;; of which the class definition has changed.
   (declare (ignore initargs)) ; there shouldn't be any, anyway
-  (cache-touch-object object (rucksack-cache (rucksack object)))
+  (cache-touch-object object (backpack-cache (backpack object)))
   (update-persistent-instance-for-redefined-class object added-slots
                                                   discarded-slots plist))
 

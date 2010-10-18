@@ -1,6 +1,6 @@
 ;; $Id: mop.lisp,v 1.13 2007-01-20 18:17:55 alemmens Exp $
 
-(in-package :rucksack)
+(in-package :backpack)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; MOP Magic
@@ -179,15 +179,15 @@ and a list of changed (according to SLOT-DEFINITION-EQUAL) slots."
 
 (defun update-indexes (class)
   ;; Update class and slot indexes.
-  (when (fboundp 'current-rucksack)
+  (when (fboundp 'current-backpack)
     ;; This function is also called during compilation of Rucksack
     ;; (when the class definition of PERSISTENT-OBJECT is compiled).
     ;; At that stage the CURRENT-RUCKSACK function isn't even defined
     ;; yet, so we shouldn't call it.
-    (let ((rucksack (current-rucksack)))
-      (when rucksack
-        (rucksack-update-class-index rucksack class)
-        (rucksack-update-slot-indexes rucksack class)))))
+    (let ((backpack (current-backpack)))
+      (when backpack
+        (backpack-update-class-index backpack class)
+        (backpack-update-slot-indexes backpack class)))))
 
 
 (defmethod finalize-inheritance :after ((class persistent-class))
@@ -198,10 +198,10 @@ and a list of changed (according to SLOT-DEFINITION-EQUAL) slots."
   (setf (class-persistent-slots class)
         (remove-if-not #'slot-persistence (class-slots class)))
   ;; Update schemas if necessary.
-  (when (fboundp 'current-rucksack) ; see comment for UPDATE-INDEXES
-    (let ((rucksack (current-rucksack)))
-      (when rucksack
-        (maybe-update-schemas (schema-table (rucksack-cache rucksack))
+  (when (fboundp 'current-backpack) ; see comment for UPDATE-INDEXES
+    (let ((backpack (current-backpack)))
+      (when backpack
+        (maybe-update-schemas (schema-table (backpack-cache backpack))
                               class))))
   ;;
   (setf (class-changed-p class) nil))
