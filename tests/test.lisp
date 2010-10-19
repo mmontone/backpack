@@ -176,6 +176,21 @@
         ;; (An average age of 1200/75 doesn't seem right.)
         (coerce (/ total-age nr-persons) 'float)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Transactions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;
+;; Some transactions semantics tests.
+;;
+
+(defun test-transaction-nesting ()
+  (with-backpack (backpack *test-suite*)
+    (with-transaction ()
+      (with-transaction ()
+	(map-backpack-roots (lambda (person)
+                            (setf (age person) 25))
+                          backpack)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Btrees
@@ -207,9 +222,9 @@
 
 (defun check-order (btree)
   (format t "~&Checking order and balance~%")
-  (rs::check-btree btree)
+  (bp::check-btree btree)
   (format t " and keys~%")
-  (rs::check-bnode-keys btree (rs::btree-root btree)))
+  (bp::check-bnode-keys btree (bp::btree-root btree)))
 
 (defun check-contents (btree)
   (format t "~&Checking contents~%")
