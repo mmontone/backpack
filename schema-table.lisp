@@ -131,7 +131,7 @@ at the next commit.")))
                                :version version
                                :persistent-slot-names persistent-slots)))
     (add-schema table schema)
-    (log-for schema "Schema created for ~A" class)
+    (log-for schema "Schema created for ~A." class)
     schema))
 
                                     

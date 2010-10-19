@@ -6,8 +6,14 @@
 (defun start-logging ()
   (start-sender 'all  
 		(stream-sender :location *error-output*)  
-		:category-spec '(transaction cache mop index schema serialize gc)  
-		:output-spec '(time message context)))
+		:category-spec '(transaction
+				 cache
+				 mop
+				 index
+				 schema
+				 ;serialize
+				 gc)  
+		:output-spec '(message)))
 
 (defun stop-logging ()
   (stop-sender 'all))

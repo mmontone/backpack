@@ -190,14 +190,15 @@ at a time."))
 (defun transaction-commit (transaction
 			   &key (backpack (current-backpack))
 			   (auto-commit-children *auto-commit-children*))
-  (log-for (transaction info) "Committing ~A" transaction)
   "Call %transaction-commit to do the real work."
+  (log-for (transaction info) "Committing ~A." transaction)
   (%transaction-commit transaction (backpack-cache backpack) backpack))
 
 (defmethod %transaction-commit ((transaction standard-transaction)
 				(cache standard-cache)
 				(backpack standard-backpack)
 				&key (auto-commit-children *auto-commit-children*))
+  (declare (ignore auto-commit-children))
   (restart-case
       (progn
 	(loop
@@ -207,7 +208,7 @@ at a time."))
 		 (if (not (commited-p child))
 		     (progn
 		       (log-for (transaction info)
-				"Child transaction ~A not committed" child)
+				"Child transaction ~A not committed." child)
 		       (error 'transaction-not-commited-error :transaction child)))
 	       (commit ()
 		 :report (lambda (s)
@@ -216,13 +217,13 @@ at a time."))
 	(if (parent transaction)
 	    (commit-to-parent transaction backpack)
 	    (transaction-save transaction cache backpack))
-	(log-for (transaction info) "Transaction ~A committed")
+	(log-for (transaction info) "Transaction ~A committed." transaction)
 	(setf (commited-p transaction) t))
     (abort ()
       :report (lambda (s)
 		(format s "Abort the transaction commit"))
       (log-for (transaction info)
-	       "Transaction ~A aborted" transaction))))
+	       "Transaction ~A aborted." transaction))))
 
 (defmethod %transaction-commit :around
     ((transaction standard-transaction)
@@ -327,7 +328,8 @@ recovery can do its job if this transaction never completes."
                           :if-does-not-exist :create
                           :element-type '(unsigned-byte 8))
     (log-for (transaction dribble)
-	     "Serializing transaction to ~A" (commit-filenam cache))
+	     "Serializing transaction ~A to ~A."
+	     transaction (commit-filename cache))
     (serialize (transaction-id transaction) stream)
     (serialize (hash-table-count (dirty-objects transaction)) stream)
     (loop for object-id being the hash-key of (dirty-objects transaction)
@@ -434,7 +436,7 @@ OLD-BLOCK."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun transaction-rollback (transaction &key (backpack (current-backpack)))
-  (log-for transaction "Rolling back transaction ~A" transaction)
+  (log-for transaction "Rolling back transaction ~A." transaction)
   (transaction-rollback-1 transaction
                           (backpack-cache backpack)
                           backpack))

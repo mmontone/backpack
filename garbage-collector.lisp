@@ -220,11 +220,12 @@ collector."
   ;; Collect at least the specified amount of garbage
   ;; (i.e. mark or sweep at least the specified amount of octets).
   ;; DO: We probably need a heap lock here?
-  (unless (gc-doing-work heap) ; Don't do recursive GCs.
-    (unwind-protect
-        (progn
-          (setf (gc-doing-work heap) t)
-          (loop until (or (eql (state heap) :ready) (<= amount 0))
+  (let ((collect-amount amount))
+    (unless (gc-doing-work heap) ; Don't do recursive GCs.
+      (unwind-protect
+	   (progn
+	     (setf (gc-doing-work heap) t)
+	     (loop until (or (eql (state heap) :ready) (<= collect-amount 0))
                 do (ecase (state heap)
                      (:starting
                       (let ((backpack (backpack heap)))
@@ -244,22 +245,25 @@ collector."
                                                    (slot-value (backpack heap) 'roots))))
                       (setf (state heap) :marking-object-table))
                      (:marking-object-table
-                      (decf amount (mark-some-objects-in-table heap amount)))
+                      (decf collect-amount (mark-some-objects-in-table heap collect-amount)))
                      (:scanning
-                      (decf amount (mark-some-roots heap amount)))
+                      (decf collect-amount (mark-some-roots heap collect-amount)))
                      (:sweeping-heap
-                      (decf amount (sweep-some-heap-blocks heap amount)))
+                      (decf collect-amount (sweep-some-heap-blocks heap collect-amount)))
                      (:sweeping-object-table
-                      (decf amount (sweep-some-object-blocks heap amount)))
+                      (decf collect-amount (sweep-some-object-blocks heap collect-amount)))
                      (:finishing
                       ;;  Grow the heap by the specified GROW-SIZE.
                       (if (integerp (grow-size heap))
                           (incf (max-heap-end heap) (grow-size heap))
-                        (setf (max-heap-end heap)
-                              (round (* (grow-size heap) (max-heap-end heap)))))
+			  (setf (max-heap-end heap)
+				(round (* (grow-size heap) (max-heap-end heap)))))
                       ;;
                       (setf (state heap) :ready)))))
-      (setf (gc-doing-work heap) nil))))
+	(setf (gc-doing-work heap) nil)))
+    (let ((collected (- amount collect-amount)))
+      (log-for gc "Running garbage collector. Collected ~A octects." collected)
+      collected)))
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Marking the object table

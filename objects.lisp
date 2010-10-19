@@ -753,7 +753,7 @@ block containing the object."
       (save-buffer buffer (heap-stream heap)
                    :file-position (+ block (block-header-size heap)))
       (handle-written-object object-id block heap)
-      (log-for serialize "~A serialized" object)
+      (log-for serialize "~A serialized." object)
       ;; Return the block.
       block)))
 
