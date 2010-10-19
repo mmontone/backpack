@@ -1,10 +1,9 @@
-
 (cl:defpackage :backpack-test
-  (:nicknames :rs-test)
+  (:nicknames :bp-test)
   (:use :common-lisp :backpack :lisp-unit)
   (:export #:run-tests))
 
 (cl:defpackage :backpack-test-schema-update
-  (:nicknames :rs-tsu)
+  (:nicknames :bp-tsu)
   (:use :common-lisp :backpack))
 

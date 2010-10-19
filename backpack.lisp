@@ -3,7 +3,7 @@
 (in-package :backpack)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Rucksacks: API
+;;; Backpack: API
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; open-backpack [Function]
@@ -323,7 +323,7 @@ in which it appears."))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Rucksacks
+;;; Backpacks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -496,7 +496,7 @@ objects.")))
 ;;
 
 (defparameter *backpack-opening-lock*
-  (make-lock :name "Rucksack opening lock"))
+  (make-lock :name "Backpack opening lock"))
  
 (defun open-backpack (directory-designator 
                       &rest args
@@ -524,7 +524,7 @@ a new empty backpack) or :ERROR (signals an error if the backpack exists)."
     (with-lock (*backpack-opening-lock*)
       (setq *backpack*
             (if (probe-file (merge-pathnames "roots" directory))
-                ;; Rucksack already exists.
+                ;; Backpack already exists.
                 (ecase if-exists
                   (:error
                    (error "Can't create backpack in ~S: the directory
@@ -539,7 +539,7 @@ already seems to contain a backpack."
                   (:overwrite
                    ;; This is the normal case.
                    (apply #'make-instance class :directory directory args)))
-              ;; Rucksack doesn't seem to exist.
+              ;; Backpack doesn't seem to exist.
               (ecase if-does-not-exist
                 (:error
                  (error "Can't open backpack in ~S: the backpack roots
@@ -551,7 +551,7 @@ file is missing."
 
 
 (defun backpack-files-in-directory (directory-pathname)
-  "Returns a list with the pathnames of all Rucksack files
+  "Returns a list with the pathnames of all Backpack files
 in the specified directory."
   (list (merge-pathnames "roots" directory-pathname)
         (merge-pathnames "objects" directory-pathname)

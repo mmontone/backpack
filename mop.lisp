@@ -180,7 +180,7 @@ and a list of changed (according to SLOT-DEFINITION-EQUAL) slots."
 (defun update-indexes (class)
   ;; Update class and slot indexes.
   (when (fboundp 'current-backpack)
-    ;; This function is also called during compilation of Rucksack
+    ;; This function is also called during compilation of Backpack
     ;; (when the class definition of PERSISTENT-OBJECT is compiled).
     ;; At that stage the CURRENT-RUCKSACK function isn't even defined
     ;; yet, so we shouldn't call it.

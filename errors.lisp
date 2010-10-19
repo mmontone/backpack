@@ -3,7 +3,7 @@
 (in-package :backpack)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Rucksack errors
+;;; Backpack errors
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-condition backpack-error (error)
@@ -11,35 +11,42 @@
              :reader backpack)))
 
 (defmethod print-object ((error backpack-error) stream)
-  (format stream "Rucksack error in ~A." (backpack error)))
+  (format stream "Backpack error in ~A." (backpack error)))
 
 (defun backpack-error (class &rest args)
   (apply #'error class
          :backpack (current-backpack)
          args))
 
+(define-condition transaction-not-commited-error (backpack-error)
+  ((transaction :initarg :transaction
+		:reader transaction))
+  (:report (lambda (c s)
+	     (format s "The transaction ~A has not been committed" (transaction c))
+	     ))
+  (:documentation "The user tried to commit a parent transaction, but one of its children has not been commited"))
+
 ;;
 ;; Transaction conflict
 ;;
 
 (define-condition transaction-conflict (backpack-error)
-  ((transaction :initarg :transaction :initform (current-transaction)
-                :reader transaction)
-   (old-transaction :initarg :old-transaction
-                    :initform (error "OLD-TRANSACTION initarg required
-for transaction-conflict.")
-                    :reader old-transaction)
-   (object-id :initarg :object-id
-              :initform (error "OBJECT-ID initarg required for
-transaction-conflict.")
-              :reader object-id)))
+  ((transaction1 :initarg :transaction1
+		 :initform (error "transaction1 initarg required for transaction-conflict")
+		 :reader transaction1)
+   (transaction1 :initarg :transaction2
+		 :initform (error "transaction2 initarg required for transaction-conflict.")
+		 :reader transaction2)
+   (objects-ids :initarg :objects-ids
+		:initform (error "OBJECT-ID initarg required for transaction-conflict.")
+		:reader objects-ids)))
 
-(defmethod print-object :after ((error transaction-conflict) stream)
-  (format stream "~&~A can't modify object #~D, because ~A already
-modified it and hasn't committed yet."
-          (transaction error)
-          (object-id error)
-          (old-transaction error)))
+;; (defmethod print-object :after ((error transaction-conflict) stream)
+;;   (format stream "~&~A can't modify object #~D, because ~A already
+;; modified it and hasn't committed yet."
+;;           (transaction error)
+;;           (object-id error)
+;;           (old-transaction error)))
 
 ;;
 ;; Simple backpack error

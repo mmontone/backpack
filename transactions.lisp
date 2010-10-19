@@ -35,6 +35,14 @@
 
 (defclass standard-transaction (transaction)
   ((id :initarg :id :reader transaction-id)
+   (parent :initarg :parent
+	   :initform nil
+	   :reader parent
+	   :documentation "The parent transaction. A transaction has
+	    no parent by default")
+   (children :initform nil
+	     :reader children
+	     :documentation "A list of nested transactions")
    ;; Dirty objects
    (dirty-objects :initarg :dirty-objects
                   :initform (make-hash-table)
@@ -50,14 +58,16 @@ that have been created or modified since the last commit.  The queue
 is in least-recently-dirtied-first order.  During a commit, the
 objects are written to disk in the same order \(this is necessary to
 guarantee that the garbage collector never sees an id of an object
-that doesn't exist on disk yet.")))
+that doesn't exist on disk yet.")
+   (commited :initform nil
+	     :accessor commited-p
+	     :documentation "Whether the transaction has already been committed or not")))
 
 (defmethod print-object ((transaction transaction) stream)
   (print-unreadable-object (transaction stream :type t :identity nil)
     (format stream "#~D with ~D dirty object~:P"
             (transaction-id transaction)
             (hash-table-count (dirty-objects transaction)))))
-
 
 (defun current-transaction ()
   *transaction*)
@@ -97,7 +107,6 @@ returns nil."))
 (defmethod transaction-changed-object ((transaction standard-transaction)
                                        object-id)
   (gethash object-id (dirty-objects transaction)))
-
 
 (defmethod find-conflicting-transaction
            (object-id
@@ -141,11 +150,11 @@ returns nil."))
     transaction))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Rucksacks with serial transactions
+;;; Backpacks with serial transactions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defclass serial-transaction-backpack (standard-backpack)
-  ((transaction-lock :initform (make-lock :name "Rucksack transaction lock")
+  ((transaction-lock :initform (make-lock :name "Backpack transaction lock")
                      :reader backpack-transaction-lock))
   (:documentation
    "A serial transaction backpack allows only one active transaction
@@ -178,13 +187,76 @@ at a time."))
   `(let ((*collect-garbage-on-commit* nil))
      ,@body))
 
-(defun transaction-commit (transaction &key (backpack (current-backpack)))
-  "Call transaction-commit-1 to do the real work."
-  (transaction-commit-1 transaction (backpack-cache backpack) backpack))
+(defun transaction-commit (transaction
+			   &key (backpack (current-backpack))
+			   (auto-commit-children *auto-commit-children*))
+  (log-for (transaction info) "Committing ~A" transaction)
+  "Call %transaction-commit to do the real work."
+  (%transaction-commit transaction (backpack-cache backpack) backpack))
 
-(defmethod transaction-commit-1 ((transaction standard-transaction)
-                                 (cache standard-cache)
-                                 (backpack standard-backpack))
+(defmethod %transaction-commit ((transaction standard-transaction)
+				(cache standard-cache)
+				(backpack standard-backpack)
+				&key (auto-commit-children *auto-commit-children*))
+  (restart-case
+      (progn
+	(loop
+	   for child in (children transaction)
+	   do
+	     (restart-case 
+		 (if (not (commited-p child))
+		     (progn
+		       (log-for (transaction info)
+				"Child transaction ~A not committed" child)
+		       (error 'transaction-not-commited-error :transaction child)))
+	       (commit ()
+		 :report (lambda (s)
+			   (format s "Commit the transaction"))
+		 (transaction-commit child :backpack backpack))))
+	(if (parent transaction)
+	    (commit-to-parent transaction backpack)
+	    (transaction-save transaction cache backpack))
+	(log-for (transaction info) "Transaction ~A committed")
+	(setf (commited-p transaction) t))
+    (abort ()
+      :report (lambda (s)
+		(format s "Abort the transaction commit"))
+      (log-for (transaction info)
+	       "Transaction ~A aborted" transaction))))
+
+(defmethod %transaction-commit :around
+    ((transaction standard-transaction)
+     (cache standard-cache)
+     (backpack standard-backpack)
+     &key
+     (auto-commit-children *auto-commit-children*))
+  (if auto-commit-children
+      (handler-bind
+	  ((transaction-not-commited-error
+	    (lambda (c)
+	      (invoke-restart 'commit))))
+	(call-next-method))
+      ;; else
+      (call-next-method)))
+
+(defmethod commit-to-parent ((transaction standard-transaction)
+			     (backpack standard-backpack))
+  (let ((objects-in-conflict nil)
+	(parent-transaction (parent transaction)))
+    (loop
+       for object in (dirty-objects transaction)
+       when (gethash (object-id object)
+		     (dirty-objects parent-transaction))
+       do (push object objects-in-conflict))
+    (if objects-in-conflict
+	(error 'transaction-conflict
+	       :transaction1 transaction
+	       :transaction2 parent-transaction
+	       :objects-ids (mapcar #'object-id objects-in-conflict)))))
+
+(defmethod transaction-save ((transaction standard-transaction)
+			     (cache standard-cache)
+			     (backpack standard-backpack))
   ;; Save all dirty objects to disk.
   (if (zerop (transaction-nr-dirty-objects transaction))
       (close-transaction cache transaction)
@@ -254,6 +326,8 @@ recovery can do its job if this transaction never completes."
                           :if-exists :supersede
                           :if-does-not-exist :create
                           :element-type '(unsigned-byte 8))
+    (log-for (transaction dribble)
+	     "Serializing transaction to ~A" (commit-filenam cache))
     (serialize (transaction-id transaction) stream)
     (serialize (hash-table-count (dirty-objects transaction)) stream)
     (loop for object-id being the hash-key of (dirty-objects transaction)
@@ -360,6 +434,7 @@ OLD-BLOCK."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun transaction-rollback (transaction &key (backpack (current-backpack)))
+  (log-for transaction "Rolling back transaction ~A" transaction)
   (transaction-rollback-1 transaction
                           (backpack-cache backpack)
                           backpack))

@@ -9,7 +9,7 @@
 ;;; - First run the indexing example in test-index-1a.lisp.
 ;;; - Compile and load this file
 ;;;   This will change the class definition of HACKER.
-;;;   Because of this change, Rucksack will remove some slot indexes and
+;;;   Because of this change, Backpack will remove some slot indexes and
 ;;;   create (and fill) other slot indexes.
 ;;; - (SHOW-HACKERS)
 ;;;   Notice that "Hackers indexed by hacker-id." now doesn't list any hackers,

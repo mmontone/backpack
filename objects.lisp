@@ -753,6 +753,7 @@ block containing the object."
       (save-buffer buffer (heap-stream heap)
                    :file-position (+ block (block-header-size heap)))
       (handle-written-object object-id block heap)
+      (log-for serialize "~A serialized" object)
       ;; Return the block.
       block)))
 
@@ -879,10 +880,10 @@ version for object #~D and transaction ~D."
 ;;; Updating persistent instances
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; When a persistent object must be loaded from disk, Rucksack loads the
+;; When a persistent object must be loaded from disk, Backpack loads the
 ;; schema nr and finds the corresponding schema.  If the schema is obsolete
 ;; (i.e. there is a schema for the same class with a higher version number),
-;; Rucksack calls the generic function UPDATE-PERSISTENT-INSTANCE-FOR-REDEFINED-CLASS
+;; Backpack calls the generic function UPDATE-PERSISTENT-INSTANCE-FOR-REDEFINED-CLASS
 ;; after calling ALLOCATE-INSTANCE for the current class version.  The generic
 ;; function is very similar to UPDATE-INSTANCE-FOR-REDEFINED-CLASS: it takes a
 ;; list of added slots, a list of deleted slots and a property list containing

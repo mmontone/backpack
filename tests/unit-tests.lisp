@@ -22,13 +22,13 @@
        ,@body)))
 
 (define-test serialization-basics
-  ;; Test basic serialization of Rucksack
+  ;; Test basic serialization of Backpack
   (let ((store (merge-pathnames *backpack-unit-tests* "store")))
     (backpack::save-objects (list store) store)
     (assert-equal (list store) (backpack::load-objects store))))
 
 (define-test basic-p-cons
-  ;; Basic functions of Rucksack's P-CONS.
+  ;; Basic functions of Backpack's P-CONS.
   (with-backpack-and-transaction ()
     (let ((pc (p-cons 1 2)))
       (assert-true (and (= 1 (p-car pc)) 
@@ -40,7 +40,7 @@
       (assert-true (and (= 3 (p-car pc)) (= 4 (p-cdr pc)))))))
 
 (define-test basic-p-array
-  ;; Basic functions of Rucksack's P-ARRAY.
+  ;; Basic functions of Backpack's P-ARRAY.
   (with-backpack-and-transaction ()
     (let ((array (p-make-array 10)))
       (assert-true (not (null array)))

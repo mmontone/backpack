@@ -131,6 +131,7 @@ at the next commit.")))
                                :version version
                                :persistent-slot-names persistent-slots)))
     (add-schema table schema)
+    (log-for schema "Schema created for ~A" class)
     schema))
 
                                     
@@ -192,7 +193,7 @@ at the next commit.")))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod maybe-update-schemas ((table schema-table) class)
-  ;; Rucksack analyzes the new class definition; if it's different from the
+  ;; Backpack analyzes the new class definition; if it's different from the
   ;; previous version, a new schema is added to the schema table.  From that
   ;; moment, when an instance of the redefined class is created it will be
   ;; saved with the new schema id.

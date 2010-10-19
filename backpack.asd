@@ -5,9 +5,12 @@
 (asdf:defsystem :backpack
   :version "0.1.20"
   :serial t
+  :depends-on (:log5)
   :components ((:file "queue")
                (:file "package")
                (:file "errors")
+	       (:file "logging")
+	       (:file "config")
                (:file "mop")
                (:file "serialize" )
                (:file "heap")

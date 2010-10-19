@@ -4,9 +4,9 @@
   (error "Unsupported implementation: ~A" (lisp-implementation-type))
 
 (defpackage :backpack
-  (:nicknames :rs)
+  (:nicknames :bp)
 
-   (:use :queue :cl
+   (:use :queue :cl :log5
     #+allegro :mop
     #+lispworks :clos
     #+sbcl :sb-mop
@@ -47,7 +47,7 @@
    #:open-heap #:close-heap
    #:heap-stream #:heap-end
 
-   ;; Rucksacks
+   ;; Backpacks
    #:*backpack*
    #:open-backpack #:close-backpack #:with-backpack #:current-backpack
    #:backpack #:standard-backpack

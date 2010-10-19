@@ -1135,8 +1135,8 @@ implementation-dependent attributes."
 ;;; Structures
 ;;;
 ;;; Can't be serialized portably.  The version below works for SBCL at the
-;;; moment, but using structures in Rucksack is risky: if a structure 
-;;; definition changes, Rucksack won't know about it and you'll probably
+;;; moment, but using structures in Backpack is risky: if a structure 
+;;; definition changes, Backpack won't know about it and you'll probably
 ;;; run into big problems.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
