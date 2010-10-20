@@ -87,6 +87,11 @@ cache."))
 containing the youngest committed version of all objects that are
 currently kept in memory but are not dirty.  \('The youngest version'
 means the version belonging to the youngest committed transaction.)")
+   (queue :initform (make-instance 'queue) :reader queue
+	   :documentation "A queue of the ids of all non-dirty objects
+that are currently in the cache memory.  Whenever an object is
+retrieved (i.e. read), it's added to the queue.  If an object-id is
+in this queue, it is not necessarily in the OBJECTS hash-table.")
    (schema-table :initarg :schema-table :reader schema-table)
    (backpack :initarg :backpack :reader backpack
              :documentation "Back pointer to the backpack.")
@@ -102,13 +107,7 @@ in the queue, it will be shrunk by removing (1 - SHRINK-RATIO) * SIZE
 objects.")))
 
 (defclass mvcc-cache (standard-cache)
-  ;; Clean objects
-   ((queue :initform (make-instance 'queue) :reader queue
-	   :documentation "A queue of the ids of all non-dirty objects
-that are currently in the cache memory.  Whenever an object is
-retrieved (i.e. read), it's added to the queue.  If an object-id is
-in this queue, it is not necessarily in the OBJECTS hash-table.")
-    (last-timestamp :initform (get-universal-time)
+   ((last-timestamp :initform (get-universal-time)
 		    :accessor last-timestamp)
     (transaction-id-helper :initform -1
                           :accessor transaction-id-helper)
