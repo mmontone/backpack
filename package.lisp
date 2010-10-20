@@ -77,6 +77,7 @@
    #:transaction-start #:transaction-commit #:transaction-rollback
    #:with-transaction #:*transaction*
    #:transaction #:standard-transaction
+   #:mvcc-transaction #:stm-transaction
    #:transaction-start-1 #:transaction-commit-1
    #:transaction-id
 

@@ -363,6 +363,8 @@ objects.")))
 (defmethod backpack-roots-pathname ((backpack standard-backpack))
   (merge-pathnames "roots" (backpack-directory backpack)))
 
+(defmethod transaction-class ((backpack standard-backpack))
+  'mvcc-transaction)
 
 (defmethod class-index-table ((backpack standard-backpack))
   ;; Create class-index-table if it doesn't exist yet.

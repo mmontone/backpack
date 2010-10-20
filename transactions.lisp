@@ -35,16 +35,32 @@
 
 (defclass standard-transaction (transaction)
   ((id :initarg :id :reader transaction-id)
-   (parent :initarg :parent
+   (commited :initform nil
+	     :accessor commited-p
+	     :documentation "Whether the transaction has already been committed or not")))
+
+(defclass nested-transaction ()
+  ((parent :initarg :parent
 	   :initform nil
 	   :reader parent
-	   :documentation "The parent transaction. A transaction has
+	   :documentation
+	   "The parent transaction. A transaction has
 	    no parent by default")
    (children :initform nil
 	     :reader children
-	     :documentation "A list of nested transactions")
-   ;; Dirty objects
-   (dirty-objects :initarg :dirty-objects
+	     :documentation "A list of nested transactions"))
+  (:documentation "Nested transaction mixin"))
+
+(defclass stm-transaction (standard-transaction nested-transaction)
+  ((read-objects :initform (make-hash-table)
+		 :reader read-objects
+		 :documentation "Object versions read in the transaction's scope")
+   (dirty-objects :initform (make-hash-table)
+                  :reader dirty-objects
+                  :documentation "Objects written in the transaction's scope")))
+
+(defclass mvcc-transaction (standard-transaction)
+  ((dirty-objects :initarg :dirty-objects
                   :initform (make-hash-table)
                   :reader dirty-objects
                   :documentation "A hash-table \(from id to object)
@@ -58,10 +74,7 @@ that have been created or modified since the last commit.  The queue
 is in least-recently-dirtied-first order.  During a commit, the
 objects are written to disk in the same order \(this is necessary to
 guarantee that the garbage collector never sees an id of an object
-that doesn't exist on disk yet.")
-   (commited :initform nil
-	     :accessor commited-p
-	     :documentation "Whether the transaction has already been committed or not")))
+that doesn't exist on disk yet.")))
 
 (defmethod print-object ((transaction transaction) stream)
   (print-unreadable-object (transaction stream :type t :identity nil)
@@ -94,24 +107,24 @@ with the given object-id and is older than the given transaction.
 Returns this conflicting transaction, if there is one.  Otherwise it
 returns nil."))
 
-(defmethod transaction-nr-dirty-objects ((transaction standard-transaction))
+(defmethod transaction-nr-dirty-objects ((transaction mvcc-transaction))
   (hash-table-count (dirty-objects transaction)))
 
-(defmethod transaction-touch-object ((transaction standard-transaction)
+(defmethod transaction-touch-object ((transaction mvcc-transaction)
                                      object
                                      object-id)
   (setf (gethash object-id (dirty-objects transaction)) object)
   (queue-add (dirty-queue transaction) object-id))
 
 
-(defmethod transaction-changed-object ((transaction standard-transaction)
+(defmethod transaction-changed-object ((transaction mvcc-transaction)
                                        object-id)
   (gethash object-id (dirty-objects transaction)))
 
 (defmethod find-conflicting-transaction
            (object-id
             (cache standard-cache)
-            (current-transaction standard-transaction))
+            (current-transaction mvcc-transaction))
   ;; EFFICIENCY: We need to consider all transactions, because the
   ;; transactions are in a hash-table.  If we use a container that's
   ;; ordered by creation time (like a btree), we only need to consider
@@ -123,8 +136,8 @@ returns nil."))
                      transaction)))
 
 
-(defmethod transaction-older-p ((a standard-transaction)
-                                (b standard-transaction))
+(defmethod transaction-older-p ((a mvcc-transaction)
+                                (b mvcc-transaction))
   (< (transaction-id a) (transaction-id b)))
 
 
@@ -137,13 +150,12 @@ returns nil."))
                           &allow-other-keys)
   (apply #'transaction-start-1 (backpack-cache backpack) backpack args))
 
-
 (defmethod transaction-start-1 ((cache standard-cache)
                                 (backpack standard-backpack)
                                 &key &allow-other-keys)
   ;; Create new transaction.
   (let* ((id (incf (highest-transaction-id backpack)))
-         (transaction (make-instance 'standard-transaction :id id)))
+         (transaction (make-instance (transaction-class backpack) :id id)))
     ;; Add to open transactions.
     (open-transaction cache transaction)
     ;; And return the new transaction.
@@ -165,12 +177,12 @@ at a time."))
                                         &key &allow-other-keys)
   (process-lock (backpack-transaction-lock backpack)))
 
-(defmethod transaction-commit-1 :after ((transaction standard-transaction)
+(defmethod transaction-commit-1 :after ((transaction mvcc-transaction)
                                         (cache standard-cache)
                                         (backpack serial-transaction-backpack))
   (process-unlock (backpack-transaction-lock backpack)))
 
-(defmethod transaction-rollback-1 :after ((transaction standard-transaction)
+(defmethod transaction-rollback-1 :after ((transaction mvcc-transaction)
                                           (cache standard-cache)
                                           (backpack serial-transaction-backpack))
   (process-unlock (backpack-transaction-lock backpack)))
@@ -188,13 +200,20 @@ at a time."))
      ,@body))
 
 (defun transaction-commit (transaction
-			   &key (backpack (current-backpack))
+			   &key
+			   (backpack (current-backpack))
 			   (auto-commit-children *auto-commit-children*))
   "Call %transaction-commit to do the real work."
   (log-for (transaction info) "Committing ~A." transaction)
-  (%transaction-commit transaction (backpack-cache backpack) backpack))
+  (apply #'%transaction-commit
+	 transaction
+	 (backpack-cache backpack)
+	 backpack
+	 auto-commit-children))
 
-(defmethod %transaction-commit ((transaction standard-transaction)
+(defgeneric %transaction-commit (transaction cache backpack &key &allow-other-keys))
+
+(defmethod %transaction-commit ((transaction nested-transaction)
 				(cache standard-cache)
 				(backpack standard-backpack)
 				&key (auto-commit-children *auto-commit-children*))
@@ -226,7 +245,7 @@ at a time."))
 	       "Transaction ~A aborted." transaction))))
 
 (defmethod %transaction-commit :around
-    ((transaction standard-transaction)
+    ((transaction nested-transaction)
      (cache standard-cache)
      (backpack standard-backpack)
      &key
@@ -240,7 +259,7 @@ at a time."))
       ;; else
       (call-next-method)))
 
-(defmethod commit-to-parent ((transaction standard-transaction)
+(defmethod commit-to-parent ((transaction nested-transaction)
 			     (backpack standard-backpack))
   (let ((objects-in-conflict nil)
 	(parent-transaction (parent transaction)))
@@ -255,7 +274,12 @@ at a time."))
 	       :transaction2 parent-transaction
 	       :objects-ids (mapcar #'object-id objects-in-conflict)))))
 
-(defmethod transaction-save ((transaction standard-transaction)
+(defmethod %transaction-commit ((transaction mvcc-transaction)
+				(cache standard-cache)
+				(backpack standard-backpack) &key)
+  (transaction-save transaction cache backpack))
+
+(defmethod transaction-save ((transaction mvcc-transaction)
 			     (cache standard-cache)
 			     (backpack standard-backpack))
   ;; Save all dirty objects to disk.
@@ -359,7 +383,7 @@ recovery can do its job if this transaction never completes."
 
 (defmethod save-dirty-object (object
                               (cache standard-cache)
-                              (transaction standard-transaction)
+                              (transaction mvcc-transaction)
                               object-id &key schema)
   (let* ((transaction-id (transaction-id transaction))
          (heap (heap cache))
@@ -441,7 +465,7 @@ OLD-BLOCK."
                           (backpack-cache backpack)
                           backpack))
 
-(defmethod transaction-rollback-1 ((transaction standard-transaction)
+(defmethod transaction-rollback-1 ((transaction mvcc-transaction)
                                    (cache standard-cache)
                                    (backpack standard-backpack))
   (clrhash (dirty-objects transaction))

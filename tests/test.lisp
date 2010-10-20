@@ -185,7 +185,7 @@
 ;;
 
 (defun test-transaction-nesting ()
-  (with-backpack (backpack *test-suite*)
+  (with-backpack (backpack *test-suite* :class 'standard-backpack)
     (with-transaction ()
       (with-transaction ()
 	(map-backpack-roots (lambda (person)
