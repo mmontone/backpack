@@ -258,9 +258,8 @@ already dirty, nothing happens."
            (find-conflicting-transaction object-id cache transaction)))
       (when old-transaction
         (backpack-error 'transaction-conflict
-                        :object-id object-id
-                        :new-transaction transaction
-                        :old-transaction old-transaction)))
+                        :objects-ids (list object-id)
+                        :transaction transaction)))
     ;;
     (unless (transaction-changed-object transaction object-id) ; already dirty
       ;; Remove object from the 'clean objects' hash table.

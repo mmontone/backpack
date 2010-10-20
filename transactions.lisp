@@ -165,7 +165,7 @@ returns nil."))
 ;;; Backpacks with serial transactions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defclass serial-transaction-backpack (standard-backpack)
+(defclass serial-transaction-backpack (mvcc-backpack)
   ((transaction-lock :initform (make-lock :name "Backpack transaction lock")
                      :reader backpack-transaction-lock))
   (:documentation
@@ -270,8 +270,7 @@ at a time."))
        do (push object objects-in-conflict))
     (if objects-in-conflict
 	(error 'transaction-conflict
-	       :transaction1 transaction
-	       :transaction2 parent-transaction
+	       :transaction transaction
 	       :objects-ids (mapcar #'object-id objects-in-conflict)))))
 
 (defmethod %transaction-commit ((transaction mvcc-transaction)

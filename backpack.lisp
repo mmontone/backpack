@@ -338,11 +338,6 @@ in which it appears."))
 objects, i.e.  the objects from which the garbage collector can reach
 all live objects.")
    (roots-changed-p :initform nil :accessor roots-changed-p)
-   (highest-transaction-id :initform 0
-                           :accessor highest-transaction-id
-                           :type integer
-                           :documentation "The highest transaction ID
-in the entire backpack.  This is saved together with the roots.")
    ;; Indexes
    (class-index-table
     :documentation "The object id of a btree mapping class names to
@@ -354,6 +349,16 @@ slot index tables, where each slot index table is a btree mapping slot
 names to slot indexes.  Each slot index maps slot values to
 objects.")))
 
+(defclass mvcc-backpack (standard-backpack)
+  ((highest-transaction-id :initform 0
+                           :accessor highest-transaction-id
+                           :type integer
+                           :documentation "The highest transaction ID
+in the entire backpack.  This is saved together with the roots.")))
+
+(defclass stm-backpack (standard-backpack)
+  ())
+
 (defmethod print-object ((backpack backpack) stream)
   (print-unreadable-object (backpack stream :type t :identity t)
     (format stream "in ~S with ~D root~:P"
@@ -363,8 +368,11 @@ objects.")))
 (defmethod backpack-roots-pathname ((backpack standard-backpack))
   (merge-pathnames "roots" (backpack-directory backpack)))
 
-(defmethod transaction-class ((backpack standard-backpack))
+(defmethod transaction-class ((backpack mvcc-backpack))
   'mvcc-transaction)
+
+(defmethod cache-class ((backpack mvcc-backpack))
+  'lazy-cache)
 
 (defmethod class-index-table ((backpack standard-backpack))
   ;; Create class-index-table if it doesn't exist yet.

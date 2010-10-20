@@ -31,14 +31,11 @@
 ;;
 
 (define-condition transaction-conflict (backpack-error)
-  ((transaction1 :initarg :transaction1
-		 :initform (error "transaction1 initarg required for transaction-conflict")
-		 :reader transaction1)
-   (transaction1 :initarg :transaction2
-		 :initform (error "transaction2 initarg required for transaction-conflict.")
-		 :reader transaction2)
+  ((transaction :initarg :transaction1
+		:initform (error "transaction initarg required for transaction-conflict")
+		 :reader transaction)
    (objects-ids :initarg :objects-ids
-		:initform (error "OBJECT-ID initarg required for transaction-conflict.")
+		:initform (error "objects-ids initarg required for transaction-conflict.")
 		:reader objects-ids)))
 
 ;; (defmethod print-object :after ((error transaction-conflict) stream)
