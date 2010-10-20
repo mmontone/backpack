@@ -81,31 +81,15 @@ cache."))
   ;; The cache uses a heap to manage the object memory and a schema table to
   ;; keep track of different class versions for objects in the heap.
   ((heap :initarg :heap :reader heap)
-   (schema-table :initarg :schema-table :reader schema-table)
-   (backpack :initarg :backpack :reader backpack
-             :documentation "Back pointer to the backpack.")
-   ;; Clean objects
    (objects :initarg :objects
-            :reader objects
-            :documentation "A hash-table \(from id to object)
+	     :reader objects
+	     :documentation "A hash-table \(from id to object)
 containing the youngest committed version of all objects that are
 currently kept in memory but are not dirty.  \('The youngest version'
 means the version belonging to the youngest committed transaction.)")
-   (queue :initform (make-instance 'queue) :reader queue
-          :documentation "A queue of the ids of all non-dirty objects
-that are currently in the cache memory.  Whenever an object is
-retrieved (i.e. read), it's added to the queue.  If an object-id is
-in this queue, it is not necessarily in the OBJECTS hash-table.")
-   (last-timestamp :initform (get-universal-time)
-                   :accessor last-timestamp)
-   (transaction-id-helper :initform -1
-                          :accessor transaction-id-helper)
-   (transactions :initform (make-hash-table)
-                 :reader transactions
-                 :documentation "A mapping from transaction ids to
-transactions.  Contains only open transactions, i.e. transactions that
-haven't been rolled back or committed.")
-   ;;
+   (schema-table :initarg :schema-table :reader schema-table)
+   (backpack :initarg :backpack :reader backpack
+             :documentation "Back pointer to the backpack.")
    (size :initarg :size :accessor cache-size
          :documentation "The maximum number of non-dirty objects that
 will be kept in the cache memory.")
@@ -117,8 +101,27 @@ cache is full, i.e. when there are at least SIZE (non-dirty) objects
 in the queue, it will be shrunk by removing (1 - SHRINK-RATIO) * SIZE
 objects.")))
 
+(defclass mvcc-cache (standard-cache)
+  ;; Clean objects
+   ((queue :initform (make-instance 'queue) :reader queue
+	   :documentation "A queue of the ids of all non-dirty objects
+that are currently in the cache memory.  Whenever an object is
+retrieved (i.e. read), it's added to the queue.  If an object-id is
+in this queue, it is not necessarily in the OBJECTS hash-table.")
+    (last-timestamp :initform (get-universal-time)
+		    :accessor last-timestamp)
+    (transaction-id-helper :initform -1
+                          :accessor transaction-id-helper)
+    (transactions :initform (make-hash-table)
+		  :reader transactions
+		  :documentation "A mapping from transaction ids to
+transactions.  Contains only open transactions, i.e. transactions that
+haven't been rolled back or committed.")))
 
-(defclass lazy-cache (standard-cache)
+(defclass stm-cache (standard-cache)
+  ())
+
+(defclass lazy-cache (mvcc-cache)
   ()
   (:documentation "A lazy cache doesn't bother with fancy mechanisms
 for deciding which objects to remove from the cache.  It just fills
@@ -134,8 +137,6 @@ very stupid about the objects it should try to keep in memory."))
             (cache-size cache)
             (pathname (heap-stream (heap cache)))
             (cache-count cache))))
-
-
 
 ;;
 ;; Open/close/initialize
@@ -161,12 +162,11 @@ very stupid about the objects it should try to keep in memory."))
         (setq plist (cddr plist))))))
 
 (defun open-cache (directory &rest args
-                             &key (class 'standard-cache)
+                             &key (class 'mvcc-cache)
                              &allow-other-keys)
   (setq *cache*
         (apply #'make-instance class :directory directory
                (sans args :class))))
-
 
 (defmethod close-cache ((cache standard-cache) &key (commit t))
   (when commit
@@ -213,8 +213,6 @@ very stupid about the objects it should try to keep in memory."))
         ;; transaction that we need to undo.
         (cache-recover cache)))))
 
-
-
 (defun commit-filename (cache)
   (merge-pathnames "commit"
                    (pathname (heap-stream (heap cache)))))
@@ -240,7 +238,7 @@ very stupid about the objects it should try to keep in memory."))
 ;; Create/get/touch/delete
 ;;
 
-(defmethod cache-create-object (object (cache standard-cache))
+(defmethod cache-create-object (object (cache mvcc-cache))
   ;; This is called by a before method on SHARED-INITIALIZE and
   ;; by MAKE-PERSISTENT-DATA.
   (let ((id (new-object-id (object-table (heap cache)))))
@@ -248,8 +246,7 @@ very stupid about the objects it should try to keep in memory."))
     (transaction-touch-object (current-transaction) object id)
     id))
 
-
-(defmethod cache-touch-object (object (cache standard-cache))
+(defmethod cache-touch-object (object (cache mvcc-cache))
   "Checks for transaction conflicts and signals a transaction conflict
 if necessary.  Change the object's status to dirty.  If the object is
 already dirty, nothing happens."
@@ -275,9 +272,7 @@ already dirty, nothing happens."
       ;; Let the transaction keep track of the dirty object.
       (transaction-touch-object transaction object object-id))))
 
-
-
-(defmethod cache-get-object (object-id (cache standard-cache))
+(defmethod cache-get-object (object-id (cache mvcc-cache))
   (let* ((transaction (current-transaction))
          (result
           (or
@@ -390,15 +385,15 @@ memory."
 ;; Open/close/map transactions
 ;;
 
-(defmethod open-transaction ((cache standard-cache) transaction)
+(defmethod open-transaction ((cache mvcc-cache) transaction)
   ;; Add to open transactions.
   (setf (gethash (transaction-id transaction) (transactions cache))
         transaction))
 
-(defmethod close-transaction ((cache standard-cache) transaction)
+(defmethod close-transaction ((cache mvcc-cache) transaction)
   (remhash (transaction-id transaction) (transactions cache)))
 
-(defmethod map-transactions ((cache standard-cache) function)
+(defmethod map-transactions ((cache mvcc-cache) function)
   ;; FUNCTION may be a function that closes the transaction (removing
   ;; it from the hash table), so we create a fresh list with transactions
   ;; before doing the actual iteration.
@@ -413,7 +408,7 @@ memory."
 ;; Commit/rollback
 ;;
 
-(defmethod cache-rollback ((cache standard-cache))
+(defmethod cache-rollback ((cache mvcc-cache))
   ;; Roll back by rolling back all transactions and removing
   ;; all objects from the cache, so they'll be reloaded
   ;; from disk the next time.
@@ -424,7 +419,7 @@ memory."
   )
 
 
-(defmethod cache-commit ((cache standard-cache))
+(defmethod cache-commit ((cache mvcc-cache))
   ;; Commit all transactions.
   (map-transactions cache #'transaction-commit)
   ;; Save the schema table.
@@ -501,7 +496,3 @@ T if the object was already comitted, otherwise nil."))
                   ;; Keep trying older versions.
                   (setq younger block
                         block older)))))))))
-
-
-
-
