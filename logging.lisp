@@ -14,3 +14,5 @@
   "Category for logging serialization issues")
 (defcategory gc ()
   "Category for logging garbage collection issues")
+(defcategory gc-debug ()
+  "Category for logging garbage collection issues (debugging level)")

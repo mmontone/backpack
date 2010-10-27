@@ -508,7 +508,7 @@ inherit from this class."))
   ;; A hack to paper over some MOP differences.  Maybe a cleaner way
   ;; to solve this would be to write our own method for SHARED-INITIALIZE,
   ;; as suggested by Pascal Costanza.
-  ;; See emails of 2006-09-03/04 on backpack-devel@common-lisp.net.
+  ;; See emails of 2006-09-03/04 on rucksack-devel@common-lisp.net.
   nil)
 
 (defmethod initialize-instance :around ((object persistent-object)

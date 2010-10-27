@@ -272,6 +272,7 @@ collector."
 (defmethod mark-some-objects-in-table ((heap mark-and-sweep-heap) amount)
   ;; Mark all 'live' objects in the object table as dead (temporarily).
   ;; Returns the amount of work done.
+  (log-for gc-debug "GC: Marking objects")
   (let* ((object-table (object-table heap))
          (object-block-size (min-block-size object-table))
          (first-object-id (floor (nr-object-bytes-marked heap)
@@ -288,8 +289,10 @@ collector."
                (incf work-done object-block-size)))
     (when (>= (nr-object-bytes-marked heap) (nr-object-bytes heap))
       ;; We've finished this stage.  Move to the next step.
+      (log-for gc-debug "GC: Finished marking objects")
       (setf (state heap) :scanning))
     ;; Return the amount of work done.
+    (log-for gc-debug "GC: Marked ~A octects" work-done)
     work-done))
 
 
@@ -308,6 +311,7 @@ collector."
       ;; We've finished marking roots.  Move to the next step.
       (setf (state heap) :sweeping-heap))
     ;; Return the amount of work done.
+    (log-for gc-debug "GC: Marking roots. Marked ~A octects." work-done)
     work-done))
 
 
@@ -352,6 +356,7 @@ collector."
 
 (defmethod sweep-some-heap-blocks ((heap mark-and-sweep-heap)
                                    (amount integer))
+  (log-for gc-debug "GC: Sweeping heap.")
   (let* ((object-table (object-table heap))
          (block (+ (heap-start heap) (nr-heap-bytes-sweeped heap)))
          (work-done 0))
@@ -389,8 +394,10 @@ collector."
     (incf (nr-heap-bytes-sweeped heap) work-done)
     (when (>= block (heap-end heap))
       ;; We've finished sweeping the heap: move to the next state.
+      (log-for gc-debug "GC: Finished sweeping the heap.")
       (setf (state heap) :sweeping-object-table))
     ;; Return the amount of work done.
+    (log-for gc-debug "GC: Heap sweeped ~A octects" work-done)
     work-done))
 
 (defmethod block-alive-p ((object-table object-table) object-id block)
@@ -426,6 +433,7 @@ collector."
 
 (defmethod sweep-some-object-blocks ((heap mark-and-sweep-heap)
                                      (amount integer))
+  (log-for gc-debug "Sweeping object blocks.")
   ;; Deallocate some dead object blocks.
   (let* ((object-table (object-table heap))
          (object-block-size (min-block-size object-table))
@@ -445,9 +453,11 @@ collector."
                (incf (nr-object-bytes-sweeped heap) object-block-size)))
     ;;
     (when (>= (nr-object-bytes-sweeped heap) (nr-object-bytes heap))
+      (log-for gc-debug "Finished sweeping the object table.")
       ;; We've finished sweeping the object table: move to the next state.
       (setf (state heap) :finishing))
     ;; Return the amount of work done.
+    (log-for gc-debug "Swept object blocks: ~A." work-done)
     work-done))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;              

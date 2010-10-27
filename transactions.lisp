@@ -470,10 +470,3 @@ OLD-BLOCK."
   (clrhash (dirty-objects transaction))
   (queue-clear (dirty-queue transaction))
   (close-transaction cache transaction))
-
-
- 
-
-
-        
-
